@@ -2,18 +2,19 @@ import { createServer, Socket } from 'node:net';
 import { decodePacket, type Packet } from './protocol.ts';
 import { randomUUID } from 'node:crypto';
 import { httpServer } from './expressServer.ts';
+import { request as httpRequest } from 'node:http';
 
 // Replace metrics with a per-connection structure
 const connections = new Map<string, { startTime: Date; dataReceived: number; errors: number }>();
 
 export function startServer(port: number, onPacket: (packet: Packet, socket: Socket) => void): void {
   const server = createServer(handleClientConnection(onPacket));
-  server.listen(port, () => {
+  server.listen(port, '0.0.0.0', () => {
     console.log(`Server listening on port ${port}`);
   });
 
   const cliServer = createServer(handleCliConnection());
-  cliServer.listen(port + 1, () => {
+  cliServer.listen(port + 1, '0.0.0.0', () => {
     console.log(`CLI server listening on port ${port + 1}`);
   });
 }
@@ -47,15 +48,58 @@ function handleSocketData(
 
   const dataString = data.toString();
   if (detectHttpRequest(dataString)) {
-    handleHttpRequest(socket);
+    handleHttpRequest(socket, data);
   } else {
     processClientData(data, socket, onPacket);
   }
 }
 
-function handleHttpRequest(socket: Socket) {
+function handleHttpRequest(socket: Socket, data: Buffer) {
   console.log('HTTP request detected, forwarding to Express.js');
-  socket.write('HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n');
+
+  const dataString = data.toString();
+  const [requestLine, ...headerLines] = dataString.split('\r\n');
+  const [method, path] = requestLine.split(' ');
+
+  const headers = headerLines.reduce((acc, line) => {
+    const [key, value] = line.split(': ');
+    if (key && value) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+
+  const options = {
+    hostname: '0.0.0.0',
+    port: 3002,
+    method,
+    path,
+    headers,
+  };
+
+  const req = httpRequest(options, (res) => {
+    socket.write(`HTTP/${res.httpVersion} ${res.statusCode} ${res.statusMessage}\r\n`);
+    Object.entries(res.headers).forEach(([key, value]) => {
+      socket.write(`${key}: ${value}\r\n`);
+    });
+    socket.write('\r\n');
+
+    res.on('data', (chunk) => {
+      socket.write(chunk);
+    });
+
+    res.on('end', () => {
+      socket.end();
+    });
+  });
+
+  req.on('error', (err) => {
+    console.error('Error forwarding HTTP request:', err);
+    socket.end();
+  });
+
+  req.write(data);
+  req.end();
 }
 
 function closeConnection(connectionId: string) {

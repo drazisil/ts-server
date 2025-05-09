@@ -26,6 +26,6 @@ app.use((req, res) => {
 });
 
 // Start the Express.js server
-export const httpServer = app.listen(3002, () => {
+export const httpServer = app.listen(3002, '0.0.0.0', () => {
   console.log('Express server listening on port 3002');
 });
