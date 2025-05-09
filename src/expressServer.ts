@@ -1,0 +1,21 @@
+import express from 'express';
+
+// Create an Express.js server
+const app = express();
+app.use(express.json());
+
+// Create a router
+const router = express.Router();
+
+// Example route for handling HTTP requests
+router.get('/AuthLogin', (req, res) => {
+  res.send('Hello, HTTP!');
+});
+
+// Attach the router to the app
+app.use(router);
+
+// Start the Express.js server
+export const httpServer = app.listen(3002, () => {
+  console.log('Express server listening on port 3002');
+});
