@@ -1,8 +1,20 @@
 import express from 'express';
+import pino from 'pino';
+import pinoHttp from 'pino-http';
 
 // Create an Express.js server
 const app = express();
 app.use(express.json());
+
+// Create a Pino logger
+const logger = pino.default({
+  transport: {
+    target: 'pino-pretty',
+  },
+});
+
+// Use Pino HTTP middleware to log HTTP requests
+app.use(pinoHttp.default({ logger }));
 
 // Create a router
 const router = express.Router();
