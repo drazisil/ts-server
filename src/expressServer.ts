@@ -20,6 +20,11 @@ router.get('/healthcheck', (req, res) => {
 // Attach the router to the app
 app.use(router);
 
+// Add a default 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not Found', path: req.originalUrl });
+});
+
 // Start the Express.js server
 export const httpServer = app.listen(3002, () => {
   console.log('Express server listening on port 3002');
