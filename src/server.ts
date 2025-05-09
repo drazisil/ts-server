@@ -7,6 +7,7 @@ import pino from 'pino';
 import { config } from './config.js';
 import fs from 'fs';
 import path from 'path';
+import { isIPBanned } from './banning.js';
 
 const logFile = path.join(process.cwd(), 'server.log');
 const logStream = fs.createWriteStream(logFile, { flags: 'a' });
@@ -61,6 +62,12 @@ function onCliServerListening() {
 
 function handleClientConnection(onPacket: (packet: Packet, socket: Socket) => void) {
   return (socket: Socket) => {
+    if (isIPBanned(socket.remoteAddress || '')) {
+      logger.info({ ip: socket.remoteAddress }, 'Connection attempt from banned IP');
+      socket.end('Your IP has been banned.');
+      return;
+    }
+
     const connectionId = initializeConnection(socket);
 
     socket.on('data', (data) => handleSocketData(data, socket, connectionId, onPacket));

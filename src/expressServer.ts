@@ -1,5 +1,6 @@
 import express from 'express';
 import pino from 'pino';
+import { isIPBanned, banIP } from './banning.js';
 
 // Create an Express.js server
 const app = express();
@@ -40,16 +41,14 @@ app.use((req, res, next) => {
 const disallowedRoutes = ['/forbidden', '/admin', '/restricted'];
 
 // Middleware to auto-ban connections trying to access disallowed routes
-const bannedIPs = new Set<string>();
-
 app.use((req, res, next) => {
-  if (bannedIPs.has(req.ip)) {
+  if (isIPBanned(req.ip)) {
     res.status(403).send('Your IP has been banned.');
     return;
   }
 
   if (disallowedRoutes.includes(req.path)) {
-    bannedIPs.add(req.ip);
+    banIP(req.ip);
     res.status(403).send('Access to this route is forbidden. Your IP has been banned.');
     return;
   }
