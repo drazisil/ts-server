@@ -20,37 +20,58 @@ export function startServer(port: number, onPacket: (packet: Packet, socket: Soc
 
 function handleClientConnection(onPacket: (packet: Packet, socket: Socket) => void) {
   return (socket: Socket) => {
-    const connectionId = randomUUID();
-    connections.set(connectionId, { startTime: new Date(), dataReceived: 0, errors: 0 });
+    const connectionId = initializeConnection(socket);
 
-    socket.on('data', (data) => {
-      const connection = connections.get(connectionId);
-      if (connection) {
-        connection.dataReceived += data.length;
-      }
-
-      // Detect if the data is an HTTP request
-      const dataString = data.toString();
-      if (/^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH) \/.* HTTP\/.*/.test(dataString)) {
-        console.log('HTTP request detected, forwarding to Express.js');
-        socket.write('HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n');
-      } else {
-        processClientData(data, socket, onPacket);
-      }
-    });
-
-    socket.on('close', () => {
-      connections.delete(connectionId);
-    });
-
-    socket.on('error', (err) => {
-      const connection = connections.get(connectionId);
-      if (connection) {
-        connection.errors++;
-      }
-      handleSocketError(err);
-    });
+    socket.on('data', (data) => handleSocketData(data, socket, connectionId, onPacket));
+    socket.on('close', () => closeConnection(connectionId));
+    socket.on('error', (err) => handleSocketError(err, connectionId));
   };
+}
+
+function initializeConnection(socket: Socket): string {
+  const connectionId = randomUUID();
+  connections.set(connectionId, { startTime: new Date(), dataReceived: 0, errors: 0 });
+  return connectionId;
+}
+
+function handleSocketData(
+  data: Buffer,
+  socket: Socket,
+  connectionId: string,
+  onPacket: (packet: Packet, socket: Socket) => void
+) {
+  const connection = connections.get(connectionId);
+  if (connection) {
+    connection.dataReceived += data.length;
+  }
+
+  const dataString = data.toString();
+  if (detectHttpRequest(dataString)) {
+    handleHttpRequest(socket);
+  } else {
+    processClientData(data, socket, onPacket);
+  }
+}
+
+function handleHttpRequest(socket: Socket) {
+  console.log('HTTP request detected, forwarding to Express.js');
+  socket.write('HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n');
+}
+
+function closeConnection(connectionId: string) {
+  connections.delete(connectionId);
+}
+
+function handleSocketError(err: Error, connectionId: string) {
+  const connection = connections.get(connectionId);
+  if (connection) {
+    connection.errors++;
+  }
+  console.error('Socket error:', err);
+}
+
+function detectHttpRequest(dataString: string): boolean {
+  return /^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH) \/.* HTTP\/.*/.test(dataString);
 }
 
 function processClientData(data: Buffer, socket: Socket, onPacket: (packet: Packet, socket: Socket) => void) {
@@ -60,10 +81,6 @@ function processClientData(data: Buffer, socket: Socket, onPacket: (packet: Pack
   } catch (error) {
     console.error('Failed to decode packet:', error);
   }
-}
-
-function handleSocketError(err: Error) {
-  console.error('Socket error:', err);
 }
 
 function handleCliConnection() {
