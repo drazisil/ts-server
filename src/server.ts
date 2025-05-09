@@ -1,9 +1,24 @@
 import { createServer, Socket } from 'node:net';
 import { decodePacket, type Packet } from './protocol.ts';
 import { randomUUID } from 'node:crypto';
+import express from 'express';
 
 // Replace metrics with a per-connection structure
 const connections = new Map<string, { startTime: Date; dataReceived: number; errors: number }>();
+
+// Create an Express.js server
+const app = express();
+app.use(express.json());
+
+// Example route for handling HTTP requests
+app.get('/AuthLogin', (req, res) => {
+  res.send('Hello, HTTP!');
+});
+
+// Start the Express.js server
+const httpServer = app.listen(3002, () => {
+  console.log('Express server listening on port 3002');
+});
 
 export function startServer(port: number, onPacket: (packet: Packet, socket: Socket) => void): void {
   const server = createServer(handleClientConnection(onPacket));
@@ -27,7 +42,15 @@ function handleClientConnection(onPacket: (packet: Packet, socket: Socket) => vo
       if (connection) {
         connection.dataReceived += data.length;
       }
-      processClientData(data, socket, onPacket);
+
+      // Detect if the data is an HTTP request
+      const dataString = data.toString();
+      if (/^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH) \/.* HTTP\/.*/.test(dataString)) {
+        console.log('HTTP request detected, forwarding to Express.js');
+        socket.write('HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n');
+      } else {
+        processClientData(data, socket, onPacket);
+      }
     });
 
     socket.on('close', () => {
