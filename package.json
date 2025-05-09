@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "test": "echo 'No tests specified'",
-    "dev": "node src/index.ts"
+    "dev": "node --watch src/index.ts"
   },
   "keywords": [],
   "author": "",
