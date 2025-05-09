@@ -62,12 +62,14 @@ function handleHttpRequest(socket: Socket, data: Buffer) {
   const [method, path] = requestLine.split(' ');
 
   const headers = headerLines.reduce((acc, line) => {
-    const [key, value] = line.split(': ');
-    if (key && value) {
+    const separatorIndex = line.indexOf(':');
+    if (separatorIndex > -1) {
+      const key = line.slice(0, separatorIndex).trim();
+      const value = line.slice(separatorIndex + 1).trim();
       acc[key] = value;
     }
     return acc;
-  }, {});
+  }, {} as Record<string, string>);
 
   const options = {
     hostname: '0.0.0.0',

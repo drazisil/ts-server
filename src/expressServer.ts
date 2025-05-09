@@ -1,6 +1,5 @@
 import express from 'express';
 import pino from 'pino';
-import pinoHttp from 'pino-http';
 
 // Create an Express.js server
 const app = express();
@@ -19,8 +18,23 @@ const logger = pino.default({
   },
 });
 
-// Use Pino HTTP middleware to log HTTP requests
-app.use(pinoHttp.default({ logger }));
+// Remove pino-http and configure logging manually
+app.use((req, res, next) => {
+  const startTime = Date.now();
+
+  res.on('finish', () => {
+    const responseTime = Date.now() - startTime;
+    logger.info({
+      method: req.method,
+      url: req.url,
+      statusCode: res.statusCode,
+      responseTime,
+      headers: req.headers,
+    }, 'Request completed');
+  });
+
+  next();
+});
 
 // Create a router
 const router = express.Router();
