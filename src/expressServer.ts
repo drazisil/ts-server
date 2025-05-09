@@ -25,11 +25,11 @@ app.use((req, res, next) => {
   res.on('finish', () => {
     const responseTime = Date.now() - startTime;
     logger.info({
+      remoteHost: req.ip,
+      remotePort: req.socket.remotePort,
       method: req.method,
-      url: req.url,
-      statusCode: res.statusCode,
-      responseTime,
-      headers: req.headers,
+      host: req.headers.host,
+      path: req.path,
     }, 'Request completed');
   });
 
