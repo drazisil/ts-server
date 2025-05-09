@@ -10,8 +10,8 @@ const rl = readline.createInterface({
 
 const socket = new Socket();
 
-socket.connect(config.port, config.host, () => {
-  console.log(`Connected to CLI server at ${config.host}:${config.port}. Type your commands below:`);
+socket.connect(config.cliPort, config.host, () => {
+  console.log(`Connected to CLI server at ${config.host}:${config.cliPort}. Type your commands below:`);
 });
 
 socket.on('data', (data) => {

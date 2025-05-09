@@ -13,16 +13,29 @@ const connections = new Map<string, { startTime: Date; dataReceived: number; err
 
 const internalHttpServer = createHttpServer(httpApp);
 
-export function startServer(port: number, onPacket: (packet: Packet, socket: Socket) => void): void {
-  const server = createServer(handleClientConnection(onPacket));
-  server.listen(config.port, config.host, onMainServerListening);
+export function startServer(ports: number[], cliPort: number, onPacket: (packet: Packet, socket: Socket) => void): void {
+  try {
+    ports.forEach((port) => {
+      const server = createServer(handleClientConnection(onPacket));
+      server.listen(port, config.host, () => {
+        logger.info(`Server listening on ${config.host}:${port}`);
+      });
 
-  const cliServer = createServer(handleCliConnection());
-  cliServer.listen(config.cliPort, config.host, onCliServerListening);
-}
+      server.on('error', (err) => {
+        logger.error({ err }, `Error on server listening on port ${port}`);
+      });
+    });
 
-function onMainServerListening() {
-  logger.info(`Server listening on ${config.host}:${config.port}`);
+    const cliServer = createServer(handleCliConnection());
+    cliServer.listen(cliPort, config.host, onCliServerListening);
+
+    cliServer.on('error', (err) => {
+      logger.error({ err }, `Error on CLI server listening on port ${cliPort}`);
+    });
+  } catch (err) {
+    logger.error({ err }, 'Error initializing servers');
+    process.exit(1);
+  }
 }
 
 function onCliServerListening() {
