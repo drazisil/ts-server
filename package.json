@@ -9,6 +9,9 @@
     "test": "echo 'No tests specified'",
     "dev": "node --watch src/index.ts"
   },
+  "bin": {
+    "ts-server-cli": "./src/cli.ts"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
