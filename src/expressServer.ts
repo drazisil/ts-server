@@ -12,6 +12,11 @@ router.get('/AuthLogin', (req, res) => {
   res.send('Hello, HTTP!');
 });
 
+// Add a healthcheck endpoint
+router.get('/healthcheck', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Attach the router to the app
 app.use(router);
 
