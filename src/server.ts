@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { httpServer } from './expressServer.ts';
 import { request as httpRequest } from 'node:http';
 import pino from 'pino';
+import { HOST, PORT } from './config.js';
 
 const logger = pino.default();
 
@@ -12,13 +13,13 @@ const connections = new Map<string, { startTime: Date; dataReceived: number; err
 
 export function startServer(port: number, onPacket: (packet: Packet, socket: Socket) => void): void {
   const server = createServer(handleClientConnection(onPacket));
-  server.listen(port, '0.0.0.0', () => {
-    logger.info(`Server listening on port ${port}`);
+  server.listen(port, HOST, () => {
+    logger.info(`Server listening on ${HOST}:${port}`);
   });
 
   const cliServer = createServer(handleCliConnection());
-  cliServer.listen(port + 1, '0.0.0.0', () => {
-    logger.info(`CLI server listening on port ${port + 1}`);
+  cliServer.listen(port + 1, HOST, () => {
+    logger.info(`CLI server listening on ${HOST}:${port + 1}`);
   });
 }
 
