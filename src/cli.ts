@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Socket } from 'node:net';
 import readline from 'node:readline';
-import { config } from './config.js';
+import { config } from './config.ts';
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -37,8 +37,19 @@ rl.on('line', (line) => {
   } else if (command === 'help') {
     console.log('Available commands:');
     console.log('  stats - Show server statistics');
+    console.log('  banned - View all banned IPs');
+    console.log('  unban <ip> - Remove an IP from the banned list');
     console.log('  exit  - Close the CLI');
     console.log('  help  - Show this help message');
+  } else if (command === 'banned') {
+    socket.write('banned\n');
+  } else if (command.startsWith('unban ')) {
+    const ip = command.split(' ')[1];
+    if (ip) {
+      socket.write(`unban ${ip}\n`);
+    } else {
+      console.log('Usage: unban <ip>');
+    }
   } else {
     socket.write(line + '\n');
   }

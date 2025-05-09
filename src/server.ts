@@ -5,11 +5,24 @@ import { httpApp } from './expressServer.js';
 import { request as httpRequest, createServer as createHttpServer, IncomingMessage, ServerResponse } from 'node:http';
 import pino from 'pino';
 import { config } from './config.js';
+import fs from 'fs';
+import path from 'path';
 
-const logger = pino.default();
+const logFile = path.join(process.cwd(), 'server.log');
+const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+
+const logger = pino.default({
+  transport: {
+    targets: [
+      { target: 'pino/file', options: { destination: logFile } },
+      { target: 'pino-pretty', options: { destination: 1 } }, // stdout
+    ],
+  },
+});
 
 // Replace metrics with a per-connection structure
 const connections = new Map<string, { startTime: Date; dataReceived: number; errors: number }>();
+const bannedIPs = new Set<string>();
 
 const internalHttpServer = createHttpServer(httpApp);
 
@@ -28,6 +41,10 @@ export function startServer(ports: number[], cliPort: number, onPacket: (packet:
 
     const cliServer = createServer(handleCliConnection());
     cliServer.listen(cliPort, config.host, onCliServerListening);
+
+    cliServer.on('listening', () => {
+      logger.info(`CLI server successfully started on ${config.host}:${cliPort}`);
+    });
 
     cliServer.on('error', (err) => {
       logger.error({ err }, `Error on CLI server listening on port ${cliPort}`);
@@ -136,17 +153,35 @@ function processClientData(data: Buffer, socket: Socket, onPacket: (packet: Pack
 
 function handleCliConnection() {
   return (socket: Socket) => {
-    socket.on('data', (data) => processCliCommand(data, socket));
+    socket.on('data', (data) => handleCliCommand(data, socket));
   };
 }
 
-function processCliCommand(data: Buffer, socket: Socket) {
+function handleCliCommand(data: Buffer, socket: Socket) {
   const command = data.toString().trim();
+
   if (command === 'stats') {
     socket.write(`Total Connections: ${connections.size}\n`);
     connections.forEach((metrics, id) => {
       socket.write(`ID: ${id}, Start Time: ${metrics.startTime.toISOString()}, Data Received: ${metrics.dataReceived}, Errors: ${metrics.errors}\n`);
     });
+  } else if (command === 'banned') {
+    if (bannedIPs.size === 0) {
+      socket.write('No IPs are currently banned.\n');
+    } else {
+      socket.write('Banned IPs:\n');
+      bannedIPs.forEach((ip) => {
+        socket.write(`${ip}\n`);
+      });
+    }
+  } else if (command.startsWith('unban ')) {
+    const ip = command.split(' ')[1];
+    if (bannedIPs.has(ip)) {
+      bannedIPs.delete(ip);
+      socket.write(`IP ${ip} has been unbanned.\n`);
+    } else {
+      socket.write(`IP ${ip} is not in the banned list.\n`);
+    }
   } else {
     socket.write('Unknown command\n');
   }

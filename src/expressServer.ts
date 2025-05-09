@@ -36,6 +36,27 @@ app.use((req, res, next) => {
   next();
 });
 
+// Define an array of disallowed routes
+const disallowedRoutes = ['/forbidden', '/admin', '/restricted'];
+
+// Middleware to auto-ban connections trying to access disallowed routes
+const bannedIPs = new Set<string>();
+
+app.use((req, res, next) => {
+  if (bannedIPs.has(req.ip)) {
+    res.status(403).send('Your IP has been banned.');
+    return;
+  }
+
+  if (disallowedRoutes.includes(req.path)) {
+    bannedIPs.add(req.ip);
+    res.status(403).send('Access to this route is forbidden. Your IP has been banned.');
+    return;
+  }
+
+  next();
+});
+
 // Create a router
 const router = express.Router();
 
