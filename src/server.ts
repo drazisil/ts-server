@@ -3,6 +3,9 @@ import { decodePacket, type Packet } from './protocol.ts';
 import { randomUUID } from 'node:crypto';
 import { httpServer } from './expressServer.ts';
 import { request as httpRequest } from 'node:http';
+import pino from 'pino';
+
+const logger = pino.default();
 
 // Replace metrics with a per-connection structure
 const connections = new Map<string, { startTime: Date; dataReceived: number; errors: number }>();
@@ -10,12 +13,12 @@ const connections = new Map<string, { startTime: Date; dataReceived: number; err
 export function startServer(port: number, onPacket: (packet: Packet, socket: Socket) => void): void {
   const server = createServer(handleClientConnection(onPacket));
   server.listen(port, '0.0.0.0', () => {
-    console.log(`Server listening on port ${port}`);
+    logger.info(`Server listening on port ${port}`);
   });
 
   const cliServer = createServer(handleCliConnection());
   cliServer.listen(port + 1, '0.0.0.0', () => {
-    console.log(`CLI server listening on port ${port + 1}`);
+    logger.info(`CLI server listening on port ${port + 1}`);
   });
 }
 
@@ -55,7 +58,7 @@ function handleSocketData(
 }
 
 function handleHttpRequest(socket: Socket, data: Buffer) {
-  console.log('HTTP request detected, forwarding to Express.js');
+  logger.info('HTTP request detected, forwarding to Express.js');
 
   const dataString = data.toString();
   const [requestLine, ...headerLines] = dataString.split('\r\n');
@@ -96,7 +99,7 @@ function handleHttpRequest(socket: Socket, data: Buffer) {
   });
 
   req.on('error', (err) => {
-    console.error('Error forwarding HTTP request:', err);
+    logger.error({ err }, 'Error forwarding HTTP request');
     socket.end();
   });
 
@@ -113,7 +116,7 @@ function handleSocketError(err: Error, connectionId: string) {
   if (connection) {
     connection.errors++;
   }
-  console.error('Socket error:', err);
+  logger.error({ err }, 'Socket error');
 }
 
 function detectHttpRequest(dataString: string): boolean {
@@ -125,7 +128,7 @@ function processClientData(data: Buffer, socket: Socket, onPacket: (packet: Pack
     const packet = decodePacket(data);
     onPacket(packet, socket);
   } catch (error) {
-    console.error('Failed to decode packet:', error);
+    logger.error({ error }, 'Failed to decode packet');
   }
 }
 
