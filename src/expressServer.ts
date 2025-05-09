@@ -6,6 +6,12 @@ import pinoHttp from 'pino-http';
 const app = express();
 app.use(express.json());
 
+// Middleware to enforce plain text responses
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'text/plain');
+  next();
+});
+
 // Create a Pino logger
 const logger = pino.default({
   transport: {
