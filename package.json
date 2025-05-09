@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "test": "echo 'No tests specified'",
-    "dev": "node --loader ts-node/esm --no-warnings src/index.ts"
+    "dev": "nodemon --watch src --ext ts --exec \"node --loader ts-node/esm --no-warnings src/index.ts\""
   },
   "bin": {
     "ts-server-cli": "./src/cli.ts"
@@ -28,6 +28,8 @@
   },
   "devDependencies": {
     "@types/pino": "^7.0.4",
-    "@types/pino-http": "^5.8.4"
+    "@types/pino-http": "^5.8.4",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2"
   }
 }
