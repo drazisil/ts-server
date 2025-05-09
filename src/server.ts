@@ -1,26 +1,32 @@
 import { createServer, Socket } from 'node:net';
 import { decodePacket, type Packet } from './protocol.ts';
 import { randomUUID } from 'node:crypto';
-import { httpServer } from './expressServer.ts';
-import { request as httpRequest } from 'node:http';
+import { httpApp } from './expressServer.js';
+import { request as httpRequest, createServer as createHttpServer, IncomingMessage, ServerResponse } from 'node:http';
 import pino from 'pino';
-import { HOST, PORT } from './config.js';
+import { config } from './config.js';
 
 const logger = pino.default();
 
 // Replace metrics with a per-connection structure
 const connections = new Map<string, { startTime: Date; dataReceived: number; errors: number }>();
 
+const internalHttpServer = createHttpServer(httpApp);
+
 export function startServer(port: number, onPacket: (packet: Packet, socket: Socket) => void): void {
   const server = createServer(handleClientConnection(onPacket));
-  server.listen(port, HOST, () => {
-    logger.info(`Server listening on ${HOST}:${port}`);
-  });
+  server.listen(config.port, config.host, onMainServerListening);
 
   const cliServer = createServer(handleCliConnection());
-  cliServer.listen(port + 1, HOST, () => {
-    logger.info(`CLI server listening on ${HOST}:${port + 1}`);
-  });
+  cliServer.listen(config.cliPort, config.host, onCliServerListening);
+}
+
+function onMainServerListening() {
+  logger.info(`Server listening on ${config.host}:${config.port}`);
+}
+
+function onCliServerListening() {
+  logger.info(`CLI server listening on ${config.host}:${config.cliPort}`);
 }
 
 function handleClientConnection(onPacket: (packet: Packet, socket: Socket) => void) {
@@ -75,37 +81,19 @@ function handleHttpRequest(socket: Socket, data: Buffer) {
     return acc;
   }, {} as Record<string, string>);
 
-  const options = {
-    hostname: '0.0.0.0',
-    port: 3002,
-    method,
-    path,
-    headers,
-  };
+  const req = new IncomingMessage(socket);
+  req.method = method;
+  req.url = path;
+  req.headers = headers;
 
-  const req = httpRequest(options, (res) => {
-    socket.write(`HTTP/${res.httpVersion} ${res.statusCode} ${res.statusMessage}\r\n`);
-    Object.entries(res.headers).forEach(([key, value]) => {
-      socket.write(`${key}: ${value}\r\n`);
-    });
-    socket.write('\r\n');
+  const res = new ServerResponse(req);
+  res.assignSocket(socket);
 
-    res.on('data', (chunk) => {
-      socket.write(chunk);
-    });
-
-    res.on('end', () => {
-      socket.end();
-    });
-  });
-
-  req.on('error', (err) => {
-    logger.error({ err }, 'Error forwarding HTTP request');
+  res.on('finish', () => {
     socket.end();
   });
 
-  req.write(data);
-  req.end();
+  httpApp(req, res);
 }
 
 function closeConnection(connectionId: string) {

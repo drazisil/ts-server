@@ -57,7 +57,5 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not Found', path: req.originalUrl });
 });
 
-// Start the Express.js server
-export const httpServer = app.listen(3002, '0.0.0.0', () => {
-  logger.info('Express server listening on port 3002');
-});
+// Export the Express app directly for internal use
+export const httpApp = app;

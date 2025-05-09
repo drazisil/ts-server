@@ -1,7 +1,5 @@
-import { startServer } from './server.ts';
-import { handlePacket } from './handlers.ts';
-import { ports } from './config.ts';
+import { startServer } from './server.js';
+import { handlePacket } from './handlers.js';
+import { config } from './config.js';
 
-ports.forEach((port) => {
-  startServer(port, handlePacket);
-});
+startServer(config.port, handlePacket);

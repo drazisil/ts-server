@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Socket } from 'node:net';
 import readline from 'node:readline';
-import { HOST, PORT } from './config.js';
+import { config } from './config.js';
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -10,8 +10,8 @@ const rl = readline.createInterface({
 
 const socket = new Socket();
 
-socket.connect(PORT, HOST, () => {
-  console.log(`Connected to CLI server at ${HOST}:${PORT}. Type your commands below:`);
+socket.connect(config.port, config.host, () => {
+  console.log(`Connected to CLI server at ${config.host}:${config.port}. Type your commands below:`);
 });
 
 socket.on('data', (data) => {

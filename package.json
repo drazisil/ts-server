@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "test": "echo 'No tests specified'",
-    "dev": "node --watch src/index.ts"
+    "dev": "node --loader ts-node/esm src/index.ts"
   },
   "bin": {
     "ts-server-cli": "./src/cli.ts"
