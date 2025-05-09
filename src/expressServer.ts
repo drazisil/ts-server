@@ -41,14 +41,14 @@ app.use((req, res, next) => {
 const disallowedRoutes = ['/forbidden', '/admin', '/restricted'];
 
 // Middleware to auto-ban connections trying to access disallowed routes
-app.use((req, res, next) => {
-  if (isIPBanned(req.ip)) {
+app.use(async (req, res, next) => {
+  if (await isIPBanned(req.ip)) {
     res.status(403).send('Your IP has been banned.');
     return;
   }
 
   if (disallowedRoutes.includes(req.path)) {
-    banIP(req.ip);
+    await banIP(req.ip);
     res.status(403).send('Access to this route is forbidden. Your IP has been banned.');
     return;
   }

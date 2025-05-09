@@ -61,9 +61,10 @@ function onCliServerListening() {
 }
 
 function handleClientConnection(onPacket: (packet: Packet, socket: Socket) => void) {
-  return (socket: Socket) => {
-    if (isIPBanned(socket.remoteAddress || '')) {
-      logger.info({ ip: socket.remoteAddress }, 'Connection attempt from banned IP');
+  return async (socket: Socket) => {
+    const ip = socket.remoteAddress || '';
+    if (await isIPBanned(ip)) {
+      logger.info({ ip }, 'Connection attempt from banned IP');
       socket.end('Your IP has been banned.');
       return;
     }

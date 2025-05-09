@@ -1,17 +1,17 @@
-const bannedIPs = new Set<string>();
+import { addBannedIP, removeBannedIP, isIPBanned as dbIsIPBanned, getBannedIPs as dbGetBannedIPs } from './database.js';
 
-export function isIPBanned(ip: string): boolean {
-  return bannedIPs.has(ip);
+export async function isIPBanned(ip: string): Promise<boolean> {
+  return dbIsIPBanned(ip);
 }
 
-export function banIP(ip: string): void {
-  bannedIPs.add(ip);
+export async function banIP(ip: string): Promise<void> {
+  await addBannedIP(ip);
 }
 
-export function unbanIP(ip: string): void {
-  bannedIPs.delete(ip);
+export async function unbanIP(ip: string): Promise<void> {
+  await removeBannedIP(ip);
 }
 
-export function getBannedIPs(): string[] {
-  return Array.from(bannedIPs);
+export async function getBannedIPs(): Promise<string[]> {
+  return dbGetBannedIPs();
 }
